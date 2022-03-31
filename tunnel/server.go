@@ -182,7 +182,7 @@ func RunServer(ctx context.Context, config ServerConfig) error {
 				if err != nil {
 					return err
 				}
-				isSubdomain := strings.HasSuffix(parsed.Host, config.Host)
+				isSubdomain := strings.HasSuffix(parsed.Host, "."+config.Host)
 				if !isSubdomain {
 					return fmt.Errorf("host %q is not an allowed host", host)
 				}
