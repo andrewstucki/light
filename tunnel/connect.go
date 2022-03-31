@@ -102,7 +102,11 @@ func Connect(ctx context.Context, config Config) error {
 	tlsCredentials := credentials.NewTLS(tlsConfig)
 
 	grpcAddress := serverURL.Hostname() + ":" + strconv.Itoa(resp.Port)
-	connection, err := grpc.DialContext(ctx, grpcAddress, grpc.WithTransportCredentials(tlsCredentials))
+	connection, err := grpc.DialContext(
+		ctx,
+		grpcAddress,
+		grpc.WithTransportCredentials(tlsCredentials),
+	)
 	if err != nil {
 		return err
 	}
@@ -127,7 +131,8 @@ func Connect(ctx context.Context, config Config) error {
 		}
 	}()
 
-	stream, err := client.ReverseServe(ctx)
+	option := grpc.MaxCallSendMsgSize(maxMessage)
+	stream, err := client.ReverseServe(ctx, option)
 	if err != nil {
 		return err
 	}

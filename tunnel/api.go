@@ -60,6 +60,12 @@ func newAPIResponse() *apiResponse {
 
 // toProto
 func (a *apiResponse) toProto() *proto.APIResponse {
+	if a.body.Len() > maxBodySize {
+		return &proto.APIResponse{
+			Status: int64(http.StatusRequestEntityTooLarge),
+			Body:   []byte("response too large"),
+		}
+	}
 	return &proto.APIResponse{
 		Status:  int64(a.status),
 		Body:    a.body.Bytes(),

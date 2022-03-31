@@ -21,6 +21,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const (
+	maxMessage  = 600 * 1 << 20 // 600 MB
+	maxBodySize = 500 * 1 << 20 // 500 MB
+)
+
 type ServerConfig struct {
 	Host             string
 	Address          string
@@ -188,6 +193,7 @@ func RunServer(ctx context.Context, config ServerConfig) error {
 	registry := newTunnelRegistry()
 	server := newTunnelServer(config.GRPCPort, config.Host, config.Token, registry)
 	grpcServer := grpc.NewServer(
+		grpc.MaxRecvMsgSize(maxMessage),
 		grpc.Creds(serverCredentials),
 		grpc.StreamInterceptor(spiffeStreamMiddleware),
 	)
