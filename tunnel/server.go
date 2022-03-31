@@ -96,7 +96,7 @@ func (t *tunnelServer) Connect(response http.ResponseWriter, request *http.Reque
 
 	if t.token != "" {
 		// check static token
-		token := request.Header.Get("X-TUNNEL-TOKEN")
+		token := request.Header.Get("X-Tunnel-Token")
 		if token != t.token {
 			response.WriteHeader(http.StatusUnauthorized)
 			return
@@ -215,7 +215,11 @@ func RunServer(ctx context.Context, config ServerConfig) error {
 
 		errs := make(chan error, 1)
 		go func() {
-			errs <- httpServer.ListenAndServe()
+			if config.ACMEEmailAddress != "" {
+				errs <- httpServer.ListenAndServeTLS("", "")
+			} else {
+				errs <- httpServer.ListenAndServe()
+			}
 		}()
 		select {
 		case <-ctx.Done():
