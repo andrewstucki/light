@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -189,16 +188,12 @@ func RunServer(ctx context.Context, config ServerConfig) error {
 				if err != nil {
 					return err
 				}
-				parsed, err := url.Parse(h)
-				if err != nil {
-					return err
-				}
-				isSubdomain := strings.HasSuffix(parsed.Host, "."+config.Host)
+				isSubdomain := strings.HasSuffix(h, "."+config.Host)
 				if !isSubdomain {
 					return fmt.Errorf("host %q is not an allowed host", host)
 				}
 				// check that we have only a single level of subdomain
-				trimmed := strings.TrimSuffix(parsed.Host, "."+config.Host)
+				trimmed := strings.TrimSuffix(h, "."+config.Host)
 				if strings.Contains(trimmed, ".") {
 					return fmt.Errorf("host %q is not an allowed host", host)
 				}
