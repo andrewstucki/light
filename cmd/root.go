@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	defaultConfigFilename = "config"
+	defaultConfigFilename = ".light"
 	envPrefix             = "LIGHT"
 )
 
@@ -102,21 +102,35 @@ func init() {
 }
 
 func initializeConfig(cmd *cobra.Command) error {
-	v := viper.New()
-	v.SetConfigType("toml")
-	v.SetConfigName(defaultConfigFilename)
-	v.AddConfigPath("$HOME/.light")
-	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return err
-		}
+	v, err := viperConfig("$HOME", ".")
+	if err != nil {
+		return err
 	}
-
 	v.SetEnvPrefix(envPrefix)
 	v.AutomaticEnv()
 	bindFlags(cmd, v)
 
 	return nil
+}
+
+func viperConfig(locations ...string) (*viper.Viper, error) {
+	merged := viper.New()
+
+	for _, location := range locations {
+		v := viper.New()
+		v.SetConfigType("toml")
+		v.SetConfigName(defaultConfigFilename)
+		v.AddConfigPath(location)
+		if err := v.ReadInConfig(); err != nil {
+			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+				return nil, err
+			}
+		}
+		if err := merged.MergeConfigMap(v.AllSettings()); err != nil {
+			return nil, err
+		}
+	}
+	return merged, nil
 }
 
 func bindFlags(cmd *cobra.Command, v *viper.Viper) {

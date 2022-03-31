@@ -19,7 +19,7 @@ You'll need to create two DNS records for this to work properly, a wildcard for 
 
 ### Running the Client
 
-Drop a config file at `~/.light/config.toml` with your `HOST` and `TOKEN` values like:
+Drop a config file at `~/.light.toml` with your `HOST` and `TOKEN` values like:
 
 ```toml
 server="https://proxy.my.domain"
