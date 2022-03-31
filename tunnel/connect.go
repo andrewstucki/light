@@ -87,13 +87,6 @@ func Connect(ctx context.Context, config Config) error {
 	tlsCredentials := credentials.NewTLS(tlsConfig)
 
 	grpcAddress := config.Address + ":" + strconv.Itoa(resp.Port)
-
-	conn, err := tls.Dial("tcp", grpcAddress, tlsConfig)
-	if err != nil {
-		return err
-	}
-	conn.Close()
-
 	connection, err := grpc.DialContext(ctx, grpcAddress, grpc.WithTransportCredentials(tlsCredentials))
 	if err != nil {
 		return err
