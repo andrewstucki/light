@@ -27,18 +27,21 @@ type ServerConfig struct {
 	HTTPPort         int
 	GRPCPort         int
 	ACMEEmailAddress string
+	Token            string
 }
 
 type tunnelServer struct {
 	host     string
+	token    string
 	port     int
 	registry *tunnelRegistry
 	router   *mux.Router
 }
 
-func newTunnelServer(port int, host string, registry *tunnelRegistry) *tunnelServer {
+func newTunnelServer(port int, host, token string, registry *tunnelRegistry) *tunnelServer {
 	server := &tunnelServer{
 		port:     port,
+		token:    token,
 		host:     host,
 		registry: registry,
 	}
@@ -90,6 +93,15 @@ type connectResponse struct {
 
 func (t *tunnelServer) Connect(response http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
+
+	if t.token != "" {
+		// check static token
+		token := request.Header.Get("X-TUNNEL-TOKEN")
+		if token != t.token {
+			response.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+	}
 
 	req := &connectRequest{}
 	decoder := json.NewDecoder(request.Body)
@@ -153,7 +165,7 @@ func RunServer(ctx context.Context, config ServerConfig) error {
 	defer listener.Close()
 
 	registry := newTunnelRegistry()
-	server := newTunnelServer(config.GRPCPort, config.Host, registry)
+	server := newTunnelServer(config.GRPCPort, config.Host, config.Token, registry)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(serverCredentials),
 		grpc.StreamInterceptor(spiffeStreamMiddleware),

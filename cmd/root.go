@@ -30,6 +30,7 @@ var rootCmd = &cobra.Command{
 			Server:  server,
 			ID:      id,
 			Handler: proxy,
+			Token:   token,
 		}); err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
@@ -48,10 +49,12 @@ var (
 	localPort int
 	server    string
 	id        string
+	token     string
 )
 
 func init() {
 	rootCmd.Flags().IntVarP(&localPort, "port", "p", 0, "Local port to proxy to.")
 	rootCmd.Flags().StringVarP(&server, "server", "s", "http://localhost", "Server connection string")
+	rootCmd.Flags().StringVarP(&token, "token", "t", "", "Token to use on connect.")
 	rootCmd.Flags().StringVarP(&id, "id", "i", "", "id to use for connection")
 }

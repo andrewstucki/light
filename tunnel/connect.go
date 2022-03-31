@@ -23,6 +23,7 @@ import (
 
 type Config struct {
 	Server  string
+	Token   string
 	ID      string
 	Handler http.Handler
 }
@@ -56,7 +57,15 @@ func Connect(ctx context.Context, config Config) error {
 		return err
 	}
 
-	response, err := http.Post(serverURL.String(), "application/json", &buffer)
+	request, err := http.NewRequest("POST", serverURL.String(), &buffer)
+	if err != nil {
+		return err
+	}
+	request.Header.Add("Content-Type", "application/json")
+	if config.Token != "" {
+		request.Header.Add("X-Tunnel-Token", config.Token)
+	}
+	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return err
 	}
