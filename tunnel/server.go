@@ -165,7 +165,6 @@ func RunServer(ctx context.Context, config ServerConfig) error {
 		return grpcServer.Serve(listener)
 	})
 	group.Go(func() error {
-
 		manager := &autocert.Manager{
 			Cache:  newCertCache(),
 			Prompt: autocert.AcceptTOS,
@@ -213,6 +212,7 @@ func RunServer(ctx context.Context, config ServerConfig) error {
 			<-errs
 			return nil
 		case err := <-errs:
+			grpcServer.Stop()
 			return err
 		}
 	})

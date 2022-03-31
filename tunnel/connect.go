@@ -11,8 +11,10 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/andrewstucki/light/tunnel/proto"
+	"golang.org/x/net/idna"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -20,38 +22,41 @@ import (
 //go:generate protoc -Iproto tunnel.proto --go_out=proto/ --go-grpc_out=require_unimplemented_servers=false:proto/
 
 type Config struct {
-	Scheme  string
-	Port    int
-	Address string
+	Server  string
 	ID      string
 	Handler http.Handler
 }
 
 // Connect is used to serve a new client handler
 func Connect(ctx context.Context, config Config) error {
-	scheme := "http"
-	if config.Scheme != "" {
-		scheme = config.Scheme
-	}
-	port := 80
-	if config.Port != 0 {
-		port = config.Port
+	id, err := idna.Lookup.ToASCII(config.ID)
+	if err != nil {
+		return err
 	}
 
-	url := url.URL{
-		Scheme: scheme,
-		Host:   config.Address + ":" + strconv.Itoa(port),
-		Path:   "/connect",
+	if strings.Contains(id, ".") {
+		return errors.New("no . characters allowed in an id")
 	}
+
+	if id == "" {
+		return errors.New("must specify an id")
+	}
+
+	serverURL, err := url.Parse(config.Server)
+	if err != nil {
+		return err
+	}
+
+	serverURL.Path = "/connect"
 	var buffer bytes.Buffer
 	encoder := json.NewEncoder(&buffer)
 	if err := encoder.Encode(&connectRequest{
-		ID: config.ID,
+		ID: id,
 	}); err != nil {
 		return err
 	}
 
-	response, err := http.Post(url.String(), "application/json", &buffer)
+	response, err := http.Post(serverURL.String(), "application/json", &buffer)
 	if err != nil {
 		return err
 	}
@@ -86,7 +91,7 @@ func Connect(ctx context.Context, config Config) error {
 	}
 	tlsCredentials := credentials.NewTLS(tlsConfig)
 
-	grpcAddress := config.Address + ":" + strconv.Itoa(resp.Port)
+	grpcAddress := serverURL.Hostname() + ":" + strconv.Itoa(resp.Port)
 	connection, err := grpc.DialContext(ctx, grpcAddress, grpc.WithTransportCredentials(tlsCredentials))
 	if err != nil {
 		return err
