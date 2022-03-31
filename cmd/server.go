@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/andrewstucki/light/tunnel"
@@ -16,10 +17,7 @@ var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "Run the light server.",
 	Run: func(cmd *cobra.Command, args []string) {
-		stop := make(chan os.Signal, 1)
-		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer cancel()
 
 		port := httpPort
@@ -43,14 +41,11 @@ var serverCmd = &cobra.Command{
 			})
 		})
 
-		select {
-		case <-stop:
-			cancel()
-		case <-ctx.Done():
-		}
 		if err := group.Wait(); err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
+			if !strings.Contains(err.Error(), "context canceled") {
+				fmt.Fprintln(os.Stderr, err.Error())
+				os.Exit(1)
+			}
 		}
 	},
 }

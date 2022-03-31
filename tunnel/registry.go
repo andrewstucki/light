@@ -2,22 +2,22 @@ package tunnel
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/andrewstucki/light/tunnel/proto"
 )
 
+var heartbeatTimeout = 5 * time.Second
+
 type requestChannel struct {
 	ctx       context.Context
-	created   time.Time
+	heartbeat time.Time
 	requests  chan (*proto.APIRequest)
 	responses chan (*proto.APIResponse)
 
-	active int32
+	mutex  sync.RWMutex
 	cancel func()
 }
 
@@ -25,7 +25,7 @@ func newRequestChannel() *requestChannel {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &requestChannel{
 		ctx:       ctx,
-		created:   time.Now(),
+		heartbeat: time.Now(),
 		requests:  make(chan *proto.APIRequest),
 		responses: make(chan *proto.APIResponse),
 		cancel:    cancel,
@@ -55,7 +55,6 @@ func (r *requestChannel) send(ctx context.Context, request *proto.APIRequest) (*
 }
 
 func (r *requestChannel) handle(fn func(*proto.APIRequest) (*proto.APIResponse, error)) error {
-	atomic.StoreInt32(&r.active, 1)
 	for {
 		select {
 		case <-r.ctx.Done():
@@ -151,15 +150,13 @@ func (r *tunnelRegistry) reap(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(10 * time.Second):
+		case <-time.After(heartbeatTimeout / 2):
 			r.mutex.Lock()
 			for id, session := range r.sessions {
-				if time.Since(session.created) > 10*time.Second {
-					active := atomic.LoadInt32(&session.active)
-					if active == 1 {
-						continue
-					}
-					fmt.Println("pruning session", id)
+				session.mutex.RLock()
+				lastHeartbeat := session.heartbeat
+				session.mutex.RUnlock()
+				if time.Since(lastHeartbeat) > heartbeatTimeout*2 {
 					session.close()
 					delete(r.sessions, id)
 				}

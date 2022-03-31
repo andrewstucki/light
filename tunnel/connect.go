@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/andrewstucki/light/tunnel/proto"
 	"golang.org/x/net/idna"
@@ -108,6 +109,24 @@ func Connect(ctx context.Context, config Config) error {
 	defer connection.Close()
 
 	client := proto.NewTunnelClient(connection)
+	heartbeat, err := client.Heartbeat(ctx)
+	if err != nil {
+		return err
+	}
+	go func() {
+		for {
+			select {
+			case <-time.After(heartbeatTimeout):
+				err := heartbeat.Send(&proto.Empty{})
+				if err != nil {
+					return
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
 	stream, err := client.ReverseServe(ctx)
 	if err != nil {
 		return err

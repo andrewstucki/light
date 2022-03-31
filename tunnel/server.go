@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/andrewstucki/light/tunnel/proto"
 	"github.com/gorilla/mux"
@@ -154,6 +155,27 @@ func (t *tunnelServer) ReverseServe(stream proto.Tunnel_ReverseServeServer) erro
 		}
 	}
 	return nil
+}
+
+func (t *tunnelServer) Heartbeat(stream proto.Tunnel_HeartbeatServer) error {
+	ctx := stream.Context()
+	session, found := t.registry.get(id(ctx))
+	if !found {
+		return status.Errorf(codes.NotFound, "client not found")
+	}
+
+	for {
+		_, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return status.Errorf(codes.Internal, err.Error())
+		}
+		session.mutex.Lock()
+		session.heartbeat = time.Now()
+		session.mutex.Unlock()
+	}
 }
 
 func RunServer(ctx context.Context, config ServerConfig) error {

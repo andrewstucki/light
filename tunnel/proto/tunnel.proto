@@ -24,6 +24,7 @@ message Empty {}
 
 service Tunnel {
   rpc ReverseServe(stream APIResponse) returns (stream APIRequest);
+  rpc Heartbeat(stream Empty) returns (Empty);
 }
 
 option go_package = "./;proto";

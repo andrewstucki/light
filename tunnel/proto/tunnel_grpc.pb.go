@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TunnelClient interface {
 	ReverseServe(ctx context.Context, opts ...grpc.CallOption) (Tunnel_ReverseServeClient, error)
+	Heartbeat(ctx context.Context, opts ...grpc.CallOption) (Tunnel_HeartbeatClient, error)
 }
 
 type tunnelClient struct {
@@ -64,11 +65,46 @@ func (x *tunnelReverseServeClient) Recv() (*APIRequest, error) {
 	return m, nil
 }
 
+func (c *tunnelClient) Heartbeat(ctx context.Context, opts ...grpc.CallOption) (Tunnel_HeartbeatClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Tunnel_ServiceDesc.Streams[1], "/proto.Tunnel/Heartbeat", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &tunnelHeartbeatClient{stream}
+	return x, nil
+}
+
+type Tunnel_HeartbeatClient interface {
+	Send(*Empty) error
+	CloseAndRecv() (*Empty, error)
+	grpc.ClientStream
+}
+
+type tunnelHeartbeatClient struct {
+	grpc.ClientStream
+}
+
+func (x *tunnelHeartbeatClient) Send(m *Empty) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *tunnelHeartbeatClient) CloseAndRecv() (*Empty, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(Empty)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // TunnelServer is the server API for Tunnel service.
 // All implementations should embed UnimplementedTunnelServer
 // for forward compatibility
 type TunnelServer interface {
 	ReverseServe(Tunnel_ReverseServeServer) error
+	Heartbeat(Tunnel_HeartbeatServer) error
 }
 
 // UnimplementedTunnelServer should be embedded to have forward compatible implementations.
@@ -77,6 +113,9 @@ type UnimplementedTunnelServer struct {
 
 func (UnimplementedTunnelServer) ReverseServe(Tunnel_ReverseServeServer) error {
 	return status.Errorf(codes.Unimplemented, "method ReverseServe not implemented")
+}
+func (UnimplementedTunnelServer) Heartbeat(Tunnel_HeartbeatServer) error {
+	return status.Errorf(codes.Unimplemented, "method Heartbeat not implemented")
 }
 
 // UnsafeTunnelServer may be embedded to opt out of forward compatibility for this service.
@@ -116,6 +155,32 @@ func (x *tunnelReverseServeServer) Recv() (*APIResponse, error) {
 	return m, nil
 }
 
+func _Tunnel_Heartbeat_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(TunnelServer).Heartbeat(&tunnelHeartbeatServer{stream})
+}
+
+type Tunnel_HeartbeatServer interface {
+	SendAndClose(*Empty) error
+	Recv() (*Empty, error)
+	grpc.ServerStream
+}
+
+type tunnelHeartbeatServer struct {
+	grpc.ServerStream
+}
+
+func (x *tunnelHeartbeatServer) SendAndClose(m *Empty) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *tunnelHeartbeatServer) Recv() (*Empty, error) {
+	m := new(Empty)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Tunnel_ServiceDesc is the grpc.ServiceDesc for Tunnel service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -128,6 +193,11 @@ var Tunnel_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "ReverseServe",
 			Handler:       _Tunnel_ReverseServe_Handler,
 			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "Heartbeat",
+			Handler:       _Tunnel_Heartbeat_Handler,
 			ClientStreams: true,
 		},
 	},

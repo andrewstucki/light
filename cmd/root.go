@@ -6,13 +6,17 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"os/exec"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/andrewstucki/light/tunnel"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -27,6 +31,9 @@ var rootCmd = &cobra.Command{
 		return initializeConfig(cmd)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+
 		if localPort == 0 {
 			fmt.Fprintln(os.Stderr, "port value must be specified")
 			os.Exit(1)
@@ -37,14 +44,38 @@ var rootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		proxy := httputil.NewSingleHostReverseProxy(local)
-		if err := tunnel.Connect(context.Background(), tunnel.Config{
-			Server:  server,
-			ID:      id,
-			Handler: proxy,
-			Token:   token,
-		}); err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
+
+		group, ctx := errgroup.WithContext(ctx)
+
+		if len(args) > 0 {
+			// we have a subcommand
+			path, err := exec.LookPath(args[0])
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				os.Exit(1)
+			}
+			cmd := exec.CommandContext(ctx, path, args[1:]...)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			group.Go(func() error {
+				return cmd.Run()
+			})
+		}
+
+		group.Go(func() error {
+			return tunnel.Connect(ctx, tunnel.Config{
+				Server:  server,
+				ID:      id,
+				Handler: proxy,
+				Token:   token,
+			})
+		})
+
+		if err := group.Wait(); err != nil {
+			if !strings.Contains(err.Error(), "context canceled") {
+				fmt.Fprintln(os.Stderr, err.Error())
+				os.Exit(1)
+			}
 		}
 	},
 }
