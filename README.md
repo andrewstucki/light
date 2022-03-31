@@ -31,16 +31,10 @@ You should then be able to test everything out (assuming the domain `proxy.my.do
 In one terminal:
 
 ```bash
-python3 -m http.server 8082
+light -p 8082 -i test -- python3 -m http.server 8082
 ```
 
 And in another:
-
-```bash
-light -p 8082 -i test
-```
-
-And then:
 
 ```bash
 curl https://test.proxy.my.domain
