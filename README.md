@@ -28,7 +28,7 @@ token="some-token-here"
 
 You should then be able to test everything out (assuming the domain `proxy.my.domain`):
 
-In one termial:
+In one terminal:
 
 ```bash
 python3 -m http.server 8082
