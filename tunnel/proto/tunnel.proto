@@ -1,0 +1,29 @@
+syntax = "proto3";
+package proto;
+
+message Pair {
+  string name = 1;
+  string value = 2;
+}
+
+message APIRequest {
+  string request_method = 1;
+  string request_url = 2;
+  repeated Pair headers = 3;
+  repeated Pair parameters = 4;
+  bytes body = 5;
+}
+
+message APIResponse {
+  int64 status = 1;
+  repeated Pair headers = 2;
+  bytes body = 3;
+}
+
+message Empty {}
+
+service Tunnel {
+  rpc ReverseServe(stream APIResponse) returns (stream APIRequest);
+}
+
+option go_package = "./;proto";
