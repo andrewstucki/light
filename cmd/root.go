@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http/httputil"
 	"net/url"
 	"os"
@@ -63,6 +64,11 @@ var rootCmd = &cobra.Command{
 		}
 
 		group.Go(func() error {
+			proxyURL, err := urlFor(server, id)
+			if err != nil {
+				return err
+			}
+			log.Printf("Establishing proxy at: %s", proxyURL)
 			return tunnel.Connect(ctx, tunnel.Config{
 				Server:  server,
 				ID:      id,
@@ -144,4 +150,12 @@ func bindFlags(cmd *cobra.Command, v *viper.Viper) {
 			cmd.Flags().Set(f.Name, fmt.Sprintf("%v", val))
 		}
 	})
+}
+
+func urlFor(server, id string) (string, error) {
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return "", err
+	}
+	return serverURL.Scheme + "://" + id + "." + serverURL.Hostname(), nil
 }
