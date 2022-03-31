@@ -48,6 +48,13 @@ var rootCmd = &cobra.Command{
 
 		group, ctx := errgroup.WithContext(ctx)
 
+		proxyURL, err := urlFor(server, id)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+		log.Printf("Establishing proxy at: %s", proxyURL)
+
 		if len(args) > 0 {
 			// we have a subcommand
 			path, err := exec.LookPath(args[0])
@@ -64,11 +71,6 @@ var rootCmd = &cobra.Command{
 		}
 
 		group.Go(func() error {
-			proxyURL, err := urlFor(server, id)
-			if err != nil {
-				return err
-			}
-			log.Printf("Establishing proxy at: %s", proxyURL)
 			return tunnel.Connect(ctx, tunnel.Config{
 				Server:  server,
 				ID:      id,
