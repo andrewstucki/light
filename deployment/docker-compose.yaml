@@ -5,7 +5,11 @@ services:
     image: andrewstucki/light:latest
     env_file: .env
     restart: always
-    command: [ "server", "--address", "0.0.0.0", "--token", "$TOKEN", "--enable-acme-email", "$EMAIL", "--host", "$HOST" ]
+    command: [ "server", "--address", "0.0.0.0", "--certificates", "/certificates", "--token", "$TOKEN", "--enable-acme-email", "$EMAIL", "--host", "$HOST" ]
+    volumes:
+      - certificates:/certificates
     ports:
       - "443:443"
       - "8443:8443"
+volumes:
+  certificates:

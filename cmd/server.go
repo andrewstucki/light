@@ -32,12 +32,13 @@ var serverCmd = &cobra.Command{
 		group, ctx := errgroup.WithContext(ctx)
 		group.Go(func() error {
 			return tunnel.RunServer(ctx, tunnel.ServerConfig{
-				Host:             host,
-				Address:          address,
-				HTTPPort:         port,
-				GRPCPort:         grpcPort,
-				Token:            serverToken,
-				ACMEEmailAddress: acmeEmailAddress,
+				Host:                 host,
+				Address:              address,
+				HTTPPort:             port,
+				GRPCPort:             grpcPort,
+				Token:                serverToken,
+				ACMEEmailAddress:     acmeEmailAddress,
+				CertificateDirectory: certificateCache,
 			})
 		})
 
@@ -54,6 +55,7 @@ var (
 	host             string
 	address          string
 	acmeEmailAddress string
+	certificateCache string
 	serverToken      string
 	httpPort         int
 	grpcPort         int
@@ -64,6 +66,7 @@ func init() {
 	serverCmd.Flags().StringVarP(&address, "address", "a", "127.0.0.1", "Bind address for server.")
 	serverCmd.Flags().StringVarP(&acmeEmailAddress, "enable-acme-email", "", "", "ACME email address to use (enables TLS).")
 	serverCmd.Flags().StringVarP(&serverToken, "token", "t", "", "Token to have basic auth on connect.")
+	serverCmd.Flags().StringVarP(&certificateCache, "certificates", "", "", "Certificate caching directory if TLS is enabled.")
 	serverCmd.Flags().IntVarP(&httpPort, "http", "", 0, "HTTP port, defaults to 80 or 443 if TLS is enabled.")
 	serverCmd.Flags().IntVarP(&grpcPort, "grpc", "", 8443, "GRPC port.")
 

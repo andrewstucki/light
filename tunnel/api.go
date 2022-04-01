@@ -29,11 +29,17 @@ func apiRequestFromProto(ctx context.Context, req *proto.APIRequest) (*http.Requ
 // httpRequestToProto
 func httpRequestToProto(req *http.Request) (*proto.APIRequest, error) {
 	defer req.Body.Close()
-	data, err := io.ReadAll(req.Body)
+	// add 1 byte to easily see if we exceeded the limit
+	reader := io.LimitReader(req.Body, maxRequestSize+1)
+
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
 
+	if len(data) > maxRequestSize {
+		return nil, io.EOF
+	}
 	return &proto.APIRequest{
 		RequestMethod: req.Method,
 		RequestUrl:    req.URL.Path,

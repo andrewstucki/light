@@ -22,17 +22,19 @@ import (
 )
 
 const (
-	maxMessage  = 600 * 1 << 20 // 600 MB
-	maxBodySize = 500 * 1 << 20 // 500 MB
+	maxRequestSize = 1 * 1 << 20   // 1 MB
+	maxMessage     = 600 * 1 << 20 // 600 MB
+	maxBodySize    = 500 * 1 << 20 // 500 MB
 )
 
 type ServerConfig struct {
-	Host             string
-	Address          string
-	HTTPPort         int
-	GRPCPort         int
-	ACMEEmailAddress string
-	Token            string
+	Host                 string
+	Address              string
+	HTTPPort             int
+	GRPCPort             int
+	ACMEEmailAddress     string
+	CertificateDirectory string
+	Token                string
 }
 
 type tunnelServer struct {
@@ -70,6 +72,10 @@ func (t *tunnelServer) Handler(response http.ResponseWriter, request *http.Reque
 	}
 	req, err := httpRequestToProto(request)
 	if err != nil {
+		if err == io.EOF {
+			response.WriteHeader(http.StatusRequestEntityTooLarge)
+			return
+		}
 		response.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -204,8 +210,13 @@ func RunServer(ctx context.Context, config ServerConfig) error {
 		return grpcServer.Serve(listener)
 	})
 	group.Go(func() error {
+		var cache autocert.Cache
+		cache = newCertCache()
+		if config.CertificateDirectory != "" {
+			cache = autocert.DirCache(config.CertificateDirectory)
+		}
 		manager := &autocert.Manager{
-			Cache:  newCertCache(),
+			Cache:  cache,
 			Prompt: autocert.AcceptTOS,
 			Email:  config.ACMEEmailAddress,
 			HostPolicy: func(ctx context.Context, host string) error {
