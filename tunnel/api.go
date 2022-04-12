@@ -81,11 +81,11 @@ func (a *apiResponse) toProto() *proto.APIResponse {
 
 // convert
 func convert(protoResponse *proto.APIResponse, response http.ResponseWriter) error {
-	response.WriteHeader(int(protoResponse.Status))
 	headers := response.Header()
 	for _, pair := range protoResponse.Headers {
 		headers.Add(pair.Name, pair.Value)
 	}
+	response.WriteHeader(int(protoResponse.Status))
 	_, err := response.Write(protoResponse.Body)
 	return err
 }
